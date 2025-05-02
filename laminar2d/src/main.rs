@@ -42,19 +42,20 @@ fn init(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     //         pixel[2] = value as u8;
     //     }
     // }
-    let mut start_row = 0.0;
-    while start_row < 1.0 {
-        let mut col = 0.0;
-        let mut row = start_row;
+    use rand::Rng;
+    let mut rng = rand::rng();
+    for _ in 0..2000 {
+        let mut col = rng.random_range(0.0..1.0_f32);
+        let mut row = rng.random_range(0.0..1.0);
         let mut points = 0;
         while points < 10000 && col < 1.0 {
             let step = 0.0001;
-            let noise = 15.0*perlin.noise([col, row]);
+            let noise = 10.0 * perlin.noise([col, row]);
             row += noise.sin() * step;
             col += noise.cos() * step;
             let x = (col * w as f32) as u32;
             let y = (row * h as f32) as u32;
-            if x < w as u32 && y < h as u32 {
+            if x < w as u32 && y < h as u32 && x > 0 && y > 0 {
                 let pixel = image.pixel_bytes_mut(UVec3::new(x, y, 0)).unwrap();
                 pixel[0] = pixel[0].saturating_add(20);
                 pixel[1] = pixel[1].saturating_add(20);
@@ -62,7 +63,6 @@ fn init(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
             }
             points += 1;
         }
-        start_row += 0.01;
     }
     let image_handle = images.add(image);
     commands.spawn(Sprite::from_image(image_handle));

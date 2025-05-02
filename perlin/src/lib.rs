@@ -24,8 +24,20 @@ impl Perlin {
         let mut amplitude = 1.0;
         let mut frequency = self.frequency;
 
-        for _ in 0..self.octaves {
-            total += self.noise_layer(pos.iter().map(|x| x * frequency)) * amplitude;
+        fn rotate(vec: Vec<f32>, angle: f32) -> Vec<f32> {
+            if vec.len() != 2 {
+                return vec;
+            }
+            let cos = angle.cos();
+            let sin = angle.sin();
+            vec![vec[0] * cos - vec[1] * sin, vec[0] * sin + vec[1] * cos]
+        }
+
+        for angle in 0..self.octaves {
+            total += self.noise_layer(rotate(
+                pos.iter().map(|x| x * frequency).collect(),
+                angle as f32,
+            )) * amplitude;
             amplitude *= self.persistence;
             frequency *= self.lacunarity;
         }
@@ -34,7 +46,7 @@ impl Perlin {
     }
 
     fn randvec(&self, pos: Vec<i32>) -> Vec<f32> {
-        use std::collections::hash_map::DefaultHasher;
+        use std::hash::DefaultHasher;
         use std::hash::{Hash, Hasher};
         pos.iter()
             .enumerate()
@@ -44,6 +56,8 @@ impl Perlin {
                 i.hash(&mut hasher);
                 self.seed.hash(&mut hasher);
                 let hash = hasher.finish();
+                // use statrs::distribution::Normal;
+                // Normal::standard().inverse_cdf(hash as f64 / u64::MAX as f64) as f32
                 let u1 = (hash >> 32) as f32 / u32::MAX as f32;
                 let u2 = (hash as u32) as f32 / u32::MAX as f32;
                 let theta = 2.0 * PI * u1;
@@ -58,8 +72,9 @@ impl Perlin {
         pos.iter().map(|x| x / length).collect()
     }
 
-    fn noise_layer(&self, pos: impl Iterator<Item = f32>) -> f32 {
+    fn noise_layer(&self, pos: Vec<f32>) -> f32 {
         let parts = pos
+            .into_iter()
             .map(|x| {
                 let floor = x.floor();
                 (floor as i32, x - floor)
@@ -77,12 +92,11 @@ impl Perlin {
             let scale = (0..dim)
                 .map(|i| {
                     let fade_val = fade(parts[i].1);
-                    let t = if corner[i] == 1.0 {
+                    if corner[i] == 1.0 {
                         fade_val
                     } else {
                         1.0 - fade_val
-                    };
-                    t * dot
+                    }
                 })
                 .product::<f32>();
             scale * dot
